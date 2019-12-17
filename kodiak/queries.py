@@ -767,6 +767,12 @@ class Client:
                 headers=headers,
             )
 
+    async def update_pull_request(self, number: int) -> Optional[dict]:
+        headers = await get_headers(installation_id=self.installation_id)
+        url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}/update-branch"
+        async with self.throttler:
+            return await self.session.put(url, headers=headers)
+        
     async def get_pull_request(self, number: int) -> Optional[dict]:
         headers = await get_headers(installation_id=self.installation_id)
         url = f"https://api.github.com/repos/{self.owner}/{self.repo}/pulls/{number}"

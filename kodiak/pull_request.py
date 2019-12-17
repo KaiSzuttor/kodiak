@@ -224,11 +224,6 @@ class PR:
         if self.event is None:
             self.log.info("no event")
             return MergeabilityResponse.NOT_MERGEABLE, None
-        # PRs from forks will always appear deleted because the v4 api doesn't
-        # return head information for forks like the v3 api does.
-        if not self.event.pull_request.isCrossRepository and not self.event.head_exists:
-            self.log.info("branch deleted")
-            return MergeabilityResponse.NOT_MERGEABLE, None
         if not isinstance(self.event.config, V1):
 
             await self.set_status(
@@ -298,12 +293,6 @@ class PR:
                 )
             return MergeabilityResponse.WAIT, self.event
         except NeedsBranchUpdate:
-            if self.event.pull_request.isCrossRepository:
-                await self.set_status(
-                    summary='🚨 forks cannot be updated via the github api. Click "Details" for more info',
-                    markdown_content=messages.FORKS_CANNOT_BE_UPDATED,
-                )
-                return MergeabilityResponse.NOT_MERGEABLE, self.event
             if merging:
                 await self.set_status(
                     summary="⛴ attempting to merge PR", detail="updating branch"
@@ -316,9 +305,8 @@ class PR:
         if event is None:
             self.log.warning("problem")
             return False
-        res = await self.client.merge_branch(
-            head=event.pull_request.baseRefName, base=event.pull_request.headRefName
-        )
+        res = await self.client.update_pull_request(
+            head=self.number)
         if res.status_code > 300:
             self.log.error("could not update branch", res=res, res_json=res.json())
             return False
